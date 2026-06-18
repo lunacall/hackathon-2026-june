@@ -21,6 +21,7 @@ RUN bun run build
 FROM nginx:1
 
 COPY --from=build-stage /app/frontend/dist/ /usr/share/nginx/html
+RUN chmod -R 644 /usr/share/nginx/html && find /usr/share/nginx/html -type d -exec chmod 755 {} \;
 
 COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY ./frontend/nginx-backend-not-found.conf /etc/nginx/extra-conf.d/backend-not-found.conf
