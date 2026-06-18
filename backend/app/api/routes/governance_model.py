@@ -395,26 +395,50 @@ def create_governance_model(
             with open(log_file, "w") as f:
                 json.dump(payload, f, indent=2)
 
+    def log_pipeline(message: str, t0: float) -> None:
+        """Append a pipeline/orchestration entry capturing overhead time."""
+        gap_ms = int((time.time() - t0) * 1000)
+        entry: dict = {
+            "agent": "Pipeline",
+            "stage": 0,
+            "context": {},
+            "sources_count": 0,
+            "sources": [],
+            "status": "completed",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "duration_ms": gap_ms,
+            "output": message,
+        }
+        run_log.append(entry)
+        flush()
+
     # Stage 1: Core Functions
-    logger.info("Stage 1: Discovering Core Functions")
+    t0 = time.time()
     core_functions = _get_core_functions(model_in, run_log, flush)
-    logger.info(f"Found {len(core_functions)} core functions")
+    log_pipeline(f"Found {len(core_functions)} core function{'s' if len(core_functions) != 1 else ''}. Starting pipeline.", t0)
 
     # Stages 2–5: For each core function → duties → transactions → parallel data/retention
-    for cf in core_functions:
-        logger.info(f"Processing Core Function: {cf}")
+    for cf_idx, cf in enumerate(core_functions):
+        t0 = time.time()
         primary_duties = _get_primary_duties(model_in, cf, run_log, flush)
-        logger.info(f"  Found {len(primary_duties)} primary duties")
+        log_pipeline(
+            f"Core function {cf_idx + 1}/{len(core_functions)} — \"{cf}\": found {len(primary_duties)} primary dut{'y' if len(primary_duties) == 1 else 'ies'}.",
+            t0,
+        )
 
-        for pd in primary_duties:
-            logger.info(f"  Processing Primary Duty: {pd}")
+        for pd_idx, pd in enumerate(primary_duties):
+            t0 = time.time()
             transactions = _get_transactions(model_in, cf, pd, run_log, flush)
-            logger.info(f"    Found {len(transactions)} transactions")
+            log_pipeline(
+                f"Primary duty {pd_idx + 1}/{len(primary_duties)} — \"{pd}\": found {len(transactions)} transaction{'s' if len(transactions) != 1 else ''}.",
+                t0,
+            )
 
-            for trans_obj in transactions:
+            for trans_idx, trans_obj in enumerate(transactions):
                 transaction = trans_obj.get("transaction", "")
                 related_records = trans_obj.get("related_records", "")
 
+                t0 = time.time()
                 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                     personal_data_future = executor.submit(
                         _get_personal_data_info,
@@ -445,7 +469,10 @@ def create_governance_model(
                     retention_info.get("general_schedule", ""),
                 ]
                 rows.append(row)
-                logger.info(f"    Added row for transaction: {transaction}")
+                log_pipeline(
+                    f"Transaction {trans_idx + 1}/{len(transactions)} — \"{transaction[:60]}\": row assembled.",
+                    t0,
+                )
 
     flush("completed")
     logger.info(f"Wrote run log to {key}.json ({len(run_log)} agent calls)")

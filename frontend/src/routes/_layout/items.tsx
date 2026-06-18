@@ -461,20 +461,70 @@ function fmtMs(ms: number) {
 }
 
 function RunLogNarrative({ data }: { data: RunLog }) {
+  const agents = data.agents ?? []
+
+  // Separate pipeline (stage 0) from agent stages (1–5)
+  const pipeline = agents.filter(e => e.stage === 0)
   const byStage = new Map<number, AgentEntry[]>()
-  for (const e of data.agents ?? []) {
+  for (const e of agents.filter(e => e.stage > 0)) {
     const b = byStage.get(e.stage) ?? []
     b.push(e)
     byStage.set(e.stage, b)
   }
+
+  // Build an ordered list of items interleaved: agent blocks then their pipeline annotation
+  // Order: pipeline entries are keyed by their position in the raw agents array
+  const agentIndices = new Map<number, number>() // stage → index of first entry in agents array
+  agents.forEach((e, idx) => { if (e.stage > 0 && !agentIndices.has(e.stage)) agentIndices.set(e.stage, idx) })
+
   const stages = [...byStage.keys()].sort((a, b) => a - b)
   const blocks: React.ReactNode[] = []
+
+  // Pipeline entries that haven't been placed yet
+  let pipelineIdx = 0
+
+  // Helper: render pipeline annotations up to a given position in the agents array
+  const flushPipeline = (upToAgentIdx: number, key: string) => {
+    const slice: AgentEntry[] = []
+    while (pipelineIdx < pipeline.length) {
+      const pEntry = pipeline[pipelineIdx]
+      const pPos = agents.indexOf(pEntry)
+      if (pPos >= upToAgentIdx) break
+      slice.push(pEntry)
+      pipelineIdx++
+    }
+    if (slice.length === 0) return
+    const totalMs = slice.reduce((s, e) => s + (e.duration_ms ?? 0), 0)
+    const messages = slice.map(e => typeof e.output === "string" ? e.output : "").filter(Boolean)
+    blocks.push(
+      <div key={key} className="flex gap-3">
+        <div className="flex flex-col items-center">
+          <div className="w-px flex-1 bg-border" />
+        </div>
+        <div className="py-1 space-y-0.5">
+          {messages.map((msg, j) => (
+            <p key={j} className="text-xs text-muted-foreground/70 italic">{msg}</p>
+          ))}
+          {totalMs > 500 && (
+            <p className="text-[11px] text-muted-foreground/50">{fmtMs(totalMs)} overhead</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   let i = 0
   while (i < stages.length) {
     const stage = stages[i]
     const entries = byStage.get(stage)!
+    const stageAgentIdx = agentIndices.get(stage) ?? 0
+
+    // Flush pipeline entries that precede this stage
+    flushPipeline(stageAgentIdx, `pipe-before-${stage}`)
+
     const name = entries[0].agent
     const completed = entries.filter(e => e.status === "completed")
+    const running = entries.filter(e => e.status === "running")
     const totalMs = completed.reduce((s, e) => s + (e.duration_ms ?? 0), 0)
     const totalOut = completed.reduce((s, e) => s + (Array.isArray(e.output) ? e.output.length : e.output ? 1 : 0), 0)
     const src = entries[0].sources_count ?? 0
@@ -486,10 +536,16 @@ function RunLogNarrative({ data }: { data: RunLog }) {
       const c5 = e5.filter(e => e.status === "completed")
       const ms5 = c5.reduce((s, e) => s + (e.duration_ms ?? 0), 0)
       const src5 = e5[0].sources_count ?? 0
+      const isRunning = entries.some(e => e.status === "running") || e5.some(e => e.status === "running")
       blocks.push(
         <div key={`s${stage}`} className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 px-4 py-3 space-y-1">
           <p className="text-sm">In parallel, <strong>{name}</strong> and <strong>{n5}</strong> agents started on each transaction <span className="text-muted-foreground font-normal">({entries.length} + {e5.length} calls)</span>.</p>
-          <p className="text-xs text-muted-foreground">{fmtMs(Math.max(totalMs, ms5))} later, both completed — {name} referenced {src} source{src !== 1 ? "s" : ""}, {n5} referenced {src5} source{src5 !== 1 ? "s" : ""}.</p>
+          <p className="text-xs text-muted-foreground">
+            {isRunning
+              ? <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Running…</>
+              : `${fmtMs(Math.max(totalMs, ms5))} later, both completed — ${name} referenced ${src} source${src !== 1 ? "s" : ""}, ${n5} referenced ${src5} source${src5 !== 1 ? "s" : ""}.`
+            }
+          </p>
         </div>
       )
       i += 2
@@ -511,15 +567,19 @@ function RunLogNarrative({ data }: { data: RunLog }) {
         <div className="pb-1 space-y-0.5">
           <p className="text-sm leading-snug"><strong>{name}</strong> agent started working on {subject}{callStr}.</p>
           <p className="text-xs text-muted-foreground">
-            {completed.length > 0
-              ? `${fmtMs(totalMs)} later, completed. Generated ${totalOut} answer${totalOut !== 1 ? "s" : ""} referencing ${src} source${src !== 1 ? "s" : ""}.`
-              : "Still running…"}
+            {running.length > 0
+              ? <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Running ({completed.length}/{entries.length} done)…</>
+              : `${fmtMs(totalMs)} later, completed. Generated ${totalOut} answer${totalOut !== 1 ? "s" : ""} referencing ${src} source${src !== 1 ? "s" : ""}.`
+            }
           </p>
         </div>
       </div>
     )
     i++
   }
+
+  // Flush any remaining pipeline entries
+  flushPipeline(agents.length, "pipe-tail")
 
   if (blocks.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-8">No agent entries recorded.</p>
