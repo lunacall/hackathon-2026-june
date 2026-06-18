@@ -284,15 +284,6 @@ function parseCSVToRows(csv: string): Record<string, string>[] {
 
 function diffCSVs(v1rows: Record<string, string>[], v2rows: Record<string, string>[]): Update[] {
   const COMPARE_FIELDS = [
-    "Transactions",
-    "Related Records",
-    "Personal Data in the Records",
-    "Use of Personal Data",
-    "Purpose of Processing Personal Data",
-    "Statutory Authorization",
-    "Value of the Records",
-    "Primary Classification",
-    "Secondary Classification",
     "Retention & Disposition",
     "General Retention Schedule",
   ]

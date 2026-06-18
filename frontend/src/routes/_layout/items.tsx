@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { Download, Eye, MessageSquare, RefreshCw, ArrowLeft, ChevronDown, CheckCircle2, Zap } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Download, Eye, MessageSquare, RefreshCw, ArrowLeft, ChevronDown, CheckCircle2, Loader2 } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { getReferencesForUnit } from "@/lib/references"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,36 +57,107 @@ type Reference = {
   name: string
   url: string
   description: string
+  codes: string[]
 }
 
 const REFERENCES: Reference[] = [
   {
-    state: "Utah",
-    county: "Statewide",
-    name: "Title 81 Chapter 2 - Section 303",
-    url: "https://le.utah.gov/xcode/Title81/Chapter2/81-2-S303.html",
-    description: "Establishes requirements for marriage license issuance, including application procedures, eligibility verification, and documentation standards"
+    state: "Utah", county: "Statewide",
+    name: "Title 20A Chapter 2 - Voter Registration",
+    url: "https://le.utah.gov/xcode/Title20A/Chapter2/20A-2.html",
+    description: "Governs voter registration requirements, processes, and maintenance of accurate voter rolls in Utah",
+    codes: ["20a-2", "20a chapter 2", "chapter 2 - election code", "chapter 2 - uniform election"]
   },
   {
-    state: "Utah",
-    county: "Statewide",
-    name: "Title 26B Chapter 8 - Section 125",
-    url: "https://le.utah.gov/xcode/Title26B/Chapter8/26B-8-S125.html",
-    description: "Governs vital records protection and access, defining what constitutes exempt and public vital records"
+    state: "Utah", county: "Statewide",
+    name: "Title 20A Chapter 9 - Candidate Qualifications",
+    url: "https://le.utah.gov/xcode/Title20A/Chapter9/20A-9.html",
+    description: "Establishes candidate filing requirements, eligibility criteria, and nomination procedures for public office",
+    codes: ["20a-9", "20a chapter 9", "chapter 9"]
   },
   {
-    state: "Utah",
-    county: "Statewide",
-    name: "Title 63G Chapter 2 - Section 302",
-    url: "https://le.utah.gov/xcode/Title63G/Chapter2/63G-2-S302.html",
-    description: "Provides privacy exemptions for sensitive personal data including social security numbers and government identification information"
+    state: "Utah", county: "Statewide",
+    name: "Title 20A Chapter 3 - Absentee Voting",
+    url: "https://le.utah.gov/xcode/Title20A/Chapter3/20A-3.html",
+    description: "Outlines procedures for absentee ballot requests, distribution, verification, and counting",
+    codes: ["20a-3", "20a chapter 3", "chapter 3"]
   },
   {
-    state: "Utah",
-    county: "Statewide",
-    name: "Title 63G Chapter 2 - Section 301",
+    state: "Utah", county: "Statewide",
+    name: "Title 20A Chapter 4 - Counting Ballots",
+    url: "https://le.utah.gov/xcode/Title20A/Chapter4/20A-4.html",
+    description: "Establishes rules for tabulating votes and certifying election results",
+    codes: ["20a-4", "20a chapter 4"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 20A Chapter 11 - Campaign Finance",
+    url: "https://le.utah.gov/xcode/Title20A/Chapter11/20A-11.html",
+    description: "Governs campaign finance reporting requirements for candidates and political committees",
+    codes: ["20a-11", "20a chapter 11"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 63G Chapter 2 - Section 301 (GRAMA Public Records)",
     url: "https://le.utah.gov/xcode/Title63G/Chapter2/63G-2-S301.html",
-    description: "Defines public records access rights and establishes procedures for disclosure of government records"
+    description: "Defines public records access rights and establishes procedures for disclosure of government records",
+    codes: ["63g-2-301", "63g-2 section 301"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 63G Chapter 2 - Section 302 (Private Records)",
+    url: "https://le.utah.gov/xcode/Title63G/Chapter2/63G-2-S302.html",
+    description: "Provides privacy protections for sensitive personal data including social security numbers and government identification",
+    codes: ["63g-2-302", "63g-2 section 302", "63g-2-302(1)"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 63G Chapter 2 - Section 305 (Protected Records)",
+    url: "https://le.utah.gov/xcode/Title63G/Chapter2/63G-2-S305.html",
+    description: "Lists protected records categories exempt from public disclosure under GRAMA",
+    codes: ["63g-2-305", "63g-2 section 305", "63g-2-305("]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 17 Chapter 21 - County Recorder",
+    url: "https://le.utah.gov/xcode/Title17/Chapter21/17-21.html",
+    description: "Defines duties of county recorders including recording deeds, property records, and official documents",
+    codes: ["17-21", "title 17", "chapter 21"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 57 Chapter 3 - Recording of Documents",
+    url: "https://le.utah.gov/xcode/Title57/Chapter3/57-3.html",
+    description: "Governs the recording of real estate deeds, liens, mortgages, and other property documents",
+    codes: ["57-3", "title 57"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 26 Chapter 2 - Vital Statistics Act",
+    url: "https://le.utah.gov/xcode/Title26/Chapter2/26-2.html",
+    description: "Governs registration and maintenance of birth, death, and marriage vital records in Utah",
+    codes: ["26-2", "vital statistics", "26b-8"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 13 Chapter 2 - Business Licensing Act",
+    url: "https://le.utah.gov/xcode/Title13/Chapter2/13-2.html",
+    description: "Authorizes counties to issue business licenses and establishes application and renewal procedures",
+    codes: ["13-2", "business license", "title 13"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 52 Chapter 4 - Open and Public Meetings Act",
+    url: "https://le.utah.gov/xcode/Title52/Chapter4/52-4.html",
+    description: "Requires government bodies to hold open meetings and maintain public records of agendas and minutes",
+    codes: ["52-4", "open meetings", "public meetings"]
+  },
+  {
+    state: "Utah", county: "Statewide",
+    name: "Title 81 Chapter 2 - Marriage Licenses",
+    url: "https://le.utah.gov/xcode/Title81/Chapter2/81-2.html",
+    description: "Establishes requirements for marriage licenses, registration, and vital records related to marriages",
+    codes: ["81-2", "title 81", "marriage license"]
   },
 ]
 
@@ -338,34 +410,138 @@ function parseCSV(csv: string): Model[] {
 }
 
 
-type AgentMessage = {
+type AgentEntry = {
   agent: string
-  message: string
-  displayedText: string
-  isComplete: boolean
+  stage: number
+  context: Record<string, string>
+  sources_count: number
+  sources: string[]
+  status: "running" | "completed"
+  started_at: string
+  duration_ms?: number
+  output?: unknown
 }
 
-const AGENT_RESPONSES: Record<string, string[]> = {
-  "Personal Data Analyst": [
-    "Reviewing personal data fields in the marriage license process...",
-    "Found 12 personal data elements including names, SSN, and birth information",
-    "Risk assessment: High sensitivity due to SSN storage - requires exemption review"
-  ],
-  "Legal Compliance": [
-    "Checking statutory authorization requirements...",
-    "Utah Code § 81-2-303 and § 81-2-304 cover primary duties",
-    "All personal data processing appears properly authorized"
-  ],
-  "Records Management": [
-    "Analyzing retention and disposition schedules...",
-    "Found inconsistency: some records marked 'retain permanently', others '1 year'",
-    "Recommending alignment with GRS-285 for vital records"
-  ],
-  "Data Classification": [
-    "Classifying data sensitivity levels...",
-    "Primary: Exempt (vital records), Secondary: Private/Public mixed",
-    "Recommendation: Clarify Secondary Classification for identity documents"
-  ]
+type RunLog = {
+  government_unit: string
+  office: string
+  generated_at: string
+  duration_ms: number
+  rows_generated: number
+  status: "running" | "completed"
+  agents: AgentEntry[]
+}
+
+type LogState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "loaded"; data: RunLog }
+  | { status: "error"; message: string }
+
+async function fetchRunLog(governmentUnit: string, office: string): Promise<RunLog> {
+  const govUnit = governmentUnit.replace(/, Utah$/, "").trim()
+  const token = localStorage.getItem("access_token")
+  const params = new URLSearchParams({ government_unit: govUnit, office })
+  const resp = await fetch(
+    `${import.meta.env.VITE_API_URL}/api/v1/governance-model/log?${params}`,
+    { headers: { Authorization: `Bearer ${token ?? ""}` } }
+  )
+  if (!resp.ok) {
+    if (resp.status === 404) throw new Error("No log yet — generate this model first.")
+    throw new Error(`Server error (${resp.status})`)
+  }
+  return resp.json()
+}
+
+function fmtMs(ms: number) {
+  if (!ms) return "0ms"
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  return `${(ms / 60000).toFixed(1)} min`
+}
+
+function RunLogNarrative({ data }: { data: RunLog }) {
+  const byStage = new Map<number, AgentEntry[]>()
+  for (const e of data.agents ?? []) {
+    const b = byStage.get(e.stage) ?? []
+    b.push(e)
+    byStage.set(e.stage, b)
+  }
+  const stages = [...byStage.keys()].sort((a, b) => a - b)
+  const blocks: React.ReactNode[] = []
+  let i = 0
+  while (i < stages.length) {
+    const stage = stages[i]
+    const entries = byStage.get(stage)!
+    const name = entries[0].agent
+    const completed = entries.filter(e => e.status === "completed")
+    const totalMs = completed.reduce((s, e) => s + (e.duration_ms ?? 0), 0)
+    const totalOut = completed.reduce((s, e) => s + (Array.isArray(e.output) ? e.output.length : e.output ? 1 : 0), 0)
+    const src = entries[0].sources_count ?? 0
+    const nextStage = stages[i + 1]
+
+    if (stage === 4 && nextStage === 5) {
+      const e5 = byStage.get(5)!
+      const n5 = e5[0].agent
+      const c5 = e5.filter(e => e.status === "completed")
+      const ms5 = c5.reduce((s, e) => s + (e.duration_ms ?? 0), 0)
+      const src5 = e5[0].sources_count ?? 0
+      blocks.push(
+        <div key={`s${stage}`} className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 px-4 py-3 space-y-1">
+          <p className="text-sm">In parallel, <strong>{name}</strong> and <strong>{n5}</strong> agents started on each transaction <span className="text-muted-foreground font-normal">({entries.length} + {e5.length} calls)</span>.</p>
+          <p className="text-xs text-muted-foreground">{fmtMs(Math.max(totalMs, ms5))} later, both completed — {name} referenced {src} source{src !== 1 ? "s" : ""}, {n5} referenced {src5} source{src5 !== 1 ? "s" : ""}.</p>
+        </div>
+      )
+      i += 2
+      continue
+    }
+
+    const ctx = entries[0].context ?? {}
+    const raw = ctx.transaction || ctx.primary_duty || ctx.core_function || ""
+    const subject = raw
+      ? `"${raw.slice(0, 50)}${raw.length > 50 ? "…" : ""}"`
+      : `${data.government_unit} · ${data.office}`
+    const callStr = entries.length > 1 ? ` (${entries.length} calls)` : ""
+    blocks.push(
+      <div key={`s${stage}`} className="flex gap-3">
+        <div className="flex flex-col items-center">
+          <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
+          <div className="w-px flex-1 bg-border mt-1" />
+        </div>
+        <div className="pb-1 space-y-0.5">
+          <p className="text-sm leading-snug"><strong>{name}</strong> agent started working on {subject}{callStr}.</p>
+          <p className="text-xs text-muted-foreground">
+            {completed.length > 0
+              ? `${fmtMs(totalMs)} later, completed. Generated ${totalOut} answer${totalOut !== 1 ? "s" : ""} referencing ${src} source${src !== 1 ? "s" : ""}.`
+              : "Still running…"}
+          </p>
+        </div>
+      </div>
+    )
+    i++
+  }
+
+  if (blocks.length === 0) {
+    return <p className="text-xs text-muted-foreground text-center py-8">No agent entries recorded.</p>
+  }
+  return (
+    <div className="space-y-5 pl-1">
+      {data.status === "running" && (
+        <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+          Generation in progress — updating live…
+        </div>
+      )}
+      {blocks}
+      <div className="border-t pt-3 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{data.rows_generated} rows</span>
+        <span>·</span>
+        <span>{fmtMs(data.duration_ms)} so far</span>
+        <span>·</span>
+        <span>{new Date(data.generated_at).toLocaleString()}</span>
+      </div>
+    </div>
+  )
 }
 
 function ModelsPage() {
@@ -376,7 +552,49 @@ function ModelsPage() {
   const [showNotes, setShowNotes] = useState(false)
   const [selectedModel, setSelectedModel] = useState<Model | null>(null)
   const [showDetail, setShowDetail] = useState(false)
-  const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([])
+  const [logState, setLogState] = useState<LogState>({ status: "idle" })
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+
+  async function handleRegenerate(model: Model) {
+    if (regeneratingId) return
+    setRegeneratingId(model.id)
+    try {
+      const token = localStorage.getItem("access_token")
+      const govUnit = model.governmentUnit.replace(/, Utah$/, "").trim()
+      const refs = getReferencesForUnit(govUnit).map(r => ({
+        name: r.name,
+        url: r.url,
+        agents: r.agents,
+      }))
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/v1/governance-model/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            government_unit: govUnit,
+            office: model.office,
+            references: refs,
+          }),
+        }
+      )
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${govUnit.replace(/ /g, "_")}_${model.office.replace(/ /g, "_")}_governance_model.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Regenerate failed:", err)
+    } finally {
+      setRegeneratingId(null)
+    }
+  }
 
   useEffect(() => {
     ;(async () => {
@@ -386,54 +604,23 @@ function ModelsPage() {
   }, [])
 
   useEffect(() => {
-    if (!showNotes) return
+    if (!showNotes || !selectedModel) return
+    setLogState({ status: "loading" })
+    fetchRunLog(selectedModel.governmentUnit, selectedModel.office)
+      .then((data) => setLogState({ status: "loaded", data }))
+      .catch((err) => setLogState({ status: "error", message: err.message }))
+  }, [showNotes, selectedModel])
 
-    // Initialize agents
-    const agents = Object.entries(AGENT_RESPONSES).map(([agent, responses]) => ({
-      agent,
-      message: responses[0],
-      displayedText: "",
-      isComplete: false
-    }))
-
-    setAgentMessages(agents)
-
-    const typeInterval = setInterval(() => {
-      setAgentMessages(prev => {
-        const updated = prev.map(msg => {
-          const agentKey = msg.agent as keyof typeof AGENT_RESPONSES
-          const responses = AGENT_RESPONSES[agentKey]
-
-          if (msg.isComplete && msg.displayedText === responses[responses.length - 1]) {
-            return msg
-          }
-
-          if (msg.displayedText.length < msg.message.length) {
-            return {
-              ...msg,
-              displayedText: msg.message.slice(0, msg.displayedText.length + 2)
-            }
-          }
-
-          // Move to next message after short delay
-          const currentIndex = responses.indexOf(msg.message)
-          if (currentIndex < responses.length - 1) {
-            return {
-              ...msg,
-              message: responses[currentIndex + 1],
-              displayedText: "",
-              isComplete: false
-            }
-          }
-
-          return { ...msg, isComplete: true }
-        })
-        return updated
-      })
-    }, 30)
-
-    return () => clearInterval(typeInterval)
-  }, [showNotes])
+  useEffect(() => {
+    if (!showNotes || !selectedModel) return
+    if (logState.status !== "loaded" || logState.data.status !== "running") return
+    const interval = setInterval(() => {
+      fetchRunLog(selectedModel.governmentUnit, selectedModel.office)
+        .then((data) => setLogState({ status: "loaded", data }))
+        .catch(() => {})
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [showNotes, selectedModel, logState])
 
   const filtered = models.filter(
     (m) =>
@@ -534,8 +721,17 @@ function ModelsPage() {
                     }}>
                       <Download className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <RefreshCw className="h-3.5 w-3.5" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={regeneratingId === model.id}
+                      onClick={() => handleRegenerate(model)}
+                    >
+                      {regeneratingId === model.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <RefreshCw className="h-3.5 w-3.5" />
+                      }
                     </Button>
                   </div>
                 </td>
@@ -545,30 +741,24 @@ function ModelsPage() {
         </table>
       </div>
 
-      <Sheet open={showNotes} onOpenChange={setShowNotes}>
-        <SheetContent className="w-[600px] flex flex-col">
-          <SheetHeader>
-            <SheetTitle>Agent Analysis Chat</SheetTitle>
+      <Sheet open={showNotes} onOpenChange={(open) => { setShowNotes(open); if (!open) setLogState({ status: "idle" }) }}>
+        <SheetContent className="w-[520px] flex flex-col px-6">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-base">Agent Run Log</SheetTitle>
+            {selectedModel && (
+              <p className="text-xs text-muted-foreground">{selectedModel.governmentUnit} · {selectedModel.office}</p>
+            )}
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto mt-4 space-y-4 pr-4">
-            {agentMessages.map((msg, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <p className="text-sm font-semibold text-foreground">{msg.agent}</p>
-                  {!msg.isComplete && <Zap className="w-3 h-3 text-yellow-500 animate-pulse" />}
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
-                  {msg.displayedText}
-                  {!msg.isComplete && <span className="animate-pulse">▊</span>}
-                </div>
-              </div>
-            ))}
-            {agentMessages.every(m => m.isComplete) && (
-              <div className="flex items-center justify-center py-4">
-                <div className="text-xs text-muted-foreground">✓ Analysis complete</div>
+          <div className="flex-1 overflow-y-auto mt-2 space-y-1 text-sm">
+            {logState.status === "loading" && (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading log...
               </div>
             )}
+            {logState.status === "error" && (
+              <p className="text-muted-foreground text-center py-12 text-xs">{logState.message}</p>
+            )}
+            {logState.status === "loaded" && <RunLogNarrative data={logState.data} />}
           </div>
         </SheetContent>
       </Sheet>
@@ -595,14 +785,49 @@ function ModelDetailView({ model, onBack }: { model: Model; onBack: () => void }
     setApprovedFields(newApproved)
   }
 
-  const getReferencesForField = (text: string) => {
-    const textLower = text.toLowerCase()
-    return REFERENCES.filter(() => (
-      textLower.includes("81-2-303") || textLower.includes("81-2-304") ||
-      textLower.includes("81-2-305") || textLower.includes("81-2-306") ||
-      textLower.includes("26b-8-125") || textLower.includes("63g-2-302") ||
-      textLower.includes("63g-2-301")
-    ))
+  const FIELD_REFERENCES: Record<string, Reference[]> = {
+    statutoryAuthorization: [
+      REFERENCES.find(r => r.codes.includes("20a-2"))!,
+      REFERENCES.find(r => r.codes.includes("20a-9"))!,
+      REFERENCES.find(r => r.codes.includes("81-2"))!,
+    ].filter(Boolean),
+    primaryClassification: [
+      REFERENCES.find(r => r.codes.includes("63g-2-305"))!,
+      REFERENCES.find(r => r.codes.includes("63g-2-301"))!,
+    ].filter(Boolean),
+    secondaryClassification: [
+      REFERENCES.find(r => r.codes.includes("63g-2-302"))!,
+      REFERENCES.find(r => r.codes.includes("63g-2-305"))!,
+    ].filter(Boolean),
+    personalData: [
+      REFERENCES.find(r => r.codes.includes("63g-2-302"))!,
+      REFERENCES.find(r => r.codes.includes("63g-2-305"))!,
+    ].filter(Boolean),
+    useOfPersonalData: [
+      REFERENCES.find(r => r.codes.includes("63g-2-302"))!,
+    ].filter(Boolean),
+    purposeOfProcessing: [
+      REFERENCES.find(r => r.codes.includes("63g-2-302"))!,
+      REFERENCES.find(r => r.codes.includes("20a-2"))!,
+    ].filter(Boolean),
+    retentionDisposition: [
+      REFERENCES.find(r => r.codes.includes("63g-2-301"))!,
+    ].filter(Boolean),
+    generalRetentionSchedule: [
+      REFERENCES.find(r => r.codes.includes("63g-2-301"))!,
+    ].filter(Boolean),
+    relatedRecords: [
+      REFERENCES.find(r => r.codes.includes("63g-2-301"))!,
+      REFERENCES.find(r => r.codes.includes("57-3"))!,
+    ].filter(Boolean),
+    valueOfRecords: [
+      REFERENCES.find(r => r.codes.includes("63g-2-301"))!,
+    ].filter(Boolean),
+  }
+
+  const getReferencesForField = (_text: string, fieldKey?: string) => {
+    if (fieldKey && FIELD_REFERENCES[fieldKey]) return FIELD_REFERENCES[fieldKey]
+    return []
   }
 
   const fieldLabels: Record<string, string> = {
@@ -749,21 +974,29 @@ function ModelDetailView({ model, onBack }: { model: Model; onBack: () => void }
                                   </div>
                                 )}
 
-                                <div className="space-y-2">
-                                  <div className="text-xs font-medium text-muted-foreground mb-2">Relevant References:</div>
-                                  <div className="text-xs space-y-2 mb-3 pl-2 border-l-2 border-muted-foreground/20">
-                                    {getReferencesForField(String(value)).length > 0 ? (
-                                      getReferencesForField(String(value)).map((ref, idx) => (
-                                        <div key={idx} className="space-y-1">
-                                          <p className="font-medium text-foreground">{ref.name}</p>
-                                          <p className="text-muted-foreground">{ref.description}</p>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <p className="text-muted-foreground italic">No specific references found</p>
-                                    )}
-                                  </div>
-                                </div>
+                                {(() => {
+                                  const refs = getReferencesForField(String(value), key)
+                                  return refs.length > 0 ? (
+                                    <div className="space-y-2">
+                                      <div className="text-xs font-medium text-muted-foreground mb-2">Relevant References:</div>
+                                      <div className="text-xs space-y-2 mb-3 pl-2 border-l-2 border-muted-foreground/20">
+                                        {refs.map((ref, idx) => (
+                                          <div key={idx} className="space-y-1">
+                                            <a
+                                              href={ref.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="font-medium text-blue-600 hover:underline"
+                                            >
+                                              {ref.name} ↗
+                                            </a>
+                                            <p className="text-muted-foreground">{ref.description}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : null
+                                })()}
 
                                 <div className="flex gap-2">
                                   <Button

@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Grid3x3, HelpCircle } from "lucide-react"
+import { BarChart3, FileText, Grid3x3, HelpCircle, SlidersHorizontal } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -17,6 +17,7 @@ const baseItems: Item[] = [
   { icon: Grid3x3, title: "Models", path: "/items" },
   { icon: FileText, title: "References", path: "/settings" },
   { icon: HelpCircle, title: "Government Units", path: "/admin" },
+  { icon: SlidersHorizontal, title: "Agent Customization", path: "/customize" },
 ]
 
 export function AppSidebar() {
