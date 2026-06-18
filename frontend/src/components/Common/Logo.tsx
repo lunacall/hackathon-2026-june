@@ -1,11 +1,7 @@
 import { Link } from "@tanstack/react-router"
 
-import { useTheme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
-import icon from "/assets/images/fastapi-icon.svg"
-import iconLight from "/assets/images/fastapi-icon-light.svg"
-import logo from "/assets/images/fastapi-logo.svg"
-import logoLight from "/assets/images/fastapi-logo-light.svg"
+import { Shield, CheckCircle2 } from "lucide-react"
 
 interface LogoProps {
   variant?: "full" | "icon" | "responsive"
@@ -18,38 +14,45 @@ export function Logo({
   className,
   asLink = true,
 }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const iconContent = (
+    <div className="flex items-center justify-center relative w-6 h-6">
+      <Shield className="w-5 h-5 text-blue-900" />
+      <CheckCircle2 className="w-3 h-3 text-teal-500 absolute bottom-0 right-0" />
+    </div>
+  )
 
-  const fullLogo = isDark ? logoLight : logo
-  const iconLogo = isDark ? iconLight : icon
+  const fullContent = (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center relative w-6 h-6">
+        <Shield className="w-5 h-5 text-blue-900" />
+        <CheckCircle2 className="w-3 h-3 text-teal-500 absolute bottom-0 right-0" />
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className="text-sm font-bold text-blue-900">Data</span>
+        <span className="text-sm font-bold text-blue-900">Governance</span>
+        <span className="text-sm font-bold text-teal-600">Models</span>
+      </div>
+    </div>
+  )
 
   const content =
     variant === "responsive" ? (
       <>
-        <img
-          src={fullLogo}
-          alt="FastAPI"
-          className={cn(
-            "h-6 w-auto group-data-[collapsible=icon]:hidden",
-            className,
-          )}
-        />
-        <img
-          src={iconLogo}
-          alt="FastAPI"
-          className={cn(
-            "size-5 hidden group-data-[collapsible=icon]:block",
-            className,
-          )}
-        />
+        <div className={cn("group-data-[collapsible=icon]:hidden", className)}>
+          {fullContent}
+        </div>
+        <div className={cn("size-5 hidden group-data-[collapsible=icon]:block", className)}>
+          {iconContent}
+        </div>
       </>
+    ) : variant === "full" ? (
+      <div className={cn(className)}>
+        {fullContent}
+      </div>
     ) : (
-      <img
-        src={variant === "full" ? fullLogo : iconLogo}
-        alt="FastAPI"
-        className={cn(variant === "full" ? "h-6 w-auto" : "size-5", className)}
-      />
+      <div className={cn(className)}>
+        {iconContent}
+      </div>
     )
 
   if (!asLink) {
